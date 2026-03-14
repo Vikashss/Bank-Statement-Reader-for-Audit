@@ -354,13 +354,13 @@ col1, col2 = st.columns([1, 5])
 
 with col1:
     st.markdown(
-        "<h1 style='margin-top:10px;'>📄 Bank Statement Parser</h1>",
+        "<h1 style='margin-top:10px; text-align: center;'>📄 Bank Statement Parser</h1>",
         unsafe_allow_html=True
     )
 with col2:
     st.markdown(
-        "<p style='font-size:18px; margin-top:-10px;'>Office Use Only</p>"
-        "<p style='font-size:18px; margin-top:-30px;'>Supported format: Jammu & Kashmir Bank statement PDF only.</p>",
+        "<p style='font-size:18px; margin-top:20px; text-align: center;'>Office Use Only</p>"
+        "<p style='font-size:18px; margin-top:30px; text-align: center;'>Supported format: Jammu & Kashmir Bank statement PDF only.</p>",
         unsafe_allow_html=True
     )
 
