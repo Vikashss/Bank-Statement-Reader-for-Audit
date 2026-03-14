@@ -11,7 +11,22 @@ DATE_START_RE = re.compile(r'^\s*(\d{2}-\d{2}-\d{4})\b')
 DATE_ANY_RE = re.compile(r'(\d{2}-\d{2}-\d{4})')
 BAL_RE = re.compile(r'(\d+(?:,\d{3})*\.\d{2}(?:Cr|Dr))')
 REF_CODE_RE = re.compile(r'\b[A-Z]{4}\d{6,}\b')
-
+HIGH_RISK_KEYWORDS = [
+    "NEFT",
+    "IMPS",
+    "UPI",
+    "TRANSFER",
+    "TRF",
+    "PVT",
+    "PRIVATE",
+    "TRADERS",
+    "ENTERPRISE",
+    "AGENCY",
+    "SERVICES",
+    "KUMAR",
+    "SINGH",
+    "DEVI",
+]
 SKIP_TEXT = [
     "JAMMU AND KASHMIR BANK LTD",
     "MOVING SECRETARIAT",
@@ -80,7 +95,27 @@ DISPLAY_COLUMNS = [
     "Correction Note",
 ]
 
+def detect_high_risk(df):
 
+    keywords = [
+        "NEFT","IMPS","UPI","TRF","TRANSFER",
+        "PVT","PRIVATE","TRADERS","ENTERPRISE",
+        "AGENCY","SERVICES"
+    ]
+
+    pattern = "|".join(keywords)
+
+    high_risk_debit = df[
+        (df["Debit_num"] > 0) &
+        (df["Description"].str.upper().str.contains(pattern, na=False))
+    ]
+
+    high_risk_credit = df[
+        (df["Credit_num"] > 0) &
+        (df["Description"].str.upper().str.contains(pattern, na=False))
+    ]
+
+    return high_risk_debit, high_risk_credit
 def clean(text):
     return " ".join(str(text).split()) if text is not None else ""
 
@@ -425,6 +460,7 @@ else:
     try:
         with st.spinner("Processing PDF..."):
             df, failed_blocks, total_blocks = process_pdf(uploaded_file, opening_balance=opening_balance)
+            high_debit, high_credit = detect_high_risk(df)
 
         if df.empty:
             st.error("No transactions could be parsed from the uploaded PDF.")
@@ -476,6 +512,35 @@ else:
 
     except Exception as e:
         st.error(f"Error while processing PDF: {e}")
+        st.subheader("High Risk Analysis")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.write("High Risk Debit Entries")
+    if not high_debit.empty:
+        st.dataframe(high_debit[DISPLAY_COLUMNS])
+        excel_high_debit = to_excel_bytes(high_debit)
+        st.download_button(
+            "Download High Risk Debit Excel",
+            data=excel_high_debit,
+            file_name="high_risk_debit.xlsx"
+        )
+    else:
+        st.info("No high risk debit entries found.")
+
+with col2:
+    st.write("High Risk Credit Entries")
+    if not high_credit.empty:
+        st.dataframe(high_credit[DISPLAY_COLUMNS])
+        excel_high_credit = to_excel_bytes(high_credit)
+        st.download_button(
+            "Download High Risk Credit Excel",
+            data=excel_high_credit,
+            file_name="high_risk_credit.xlsx"
+        )
+    else:
+        st.info("No high risk credit entries found.")
 #---------footer--------------------------------------
 st.markdown(
     """
