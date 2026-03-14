@@ -353,10 +353,9 @@ st.markdown(
 col1, col2 = st.columns([1, 5])
 
 with col1:
-    st.markdown(
-        "<h1 style='margin-top:10px; text-align: center;'>📄 Bank Statement Parser</h1>",
-        unsafe_allow_html=True
-    )
+    st.title("<h1 style='margin-top:10px; text-align: center;'>📄 Bank Statement Parser</h1>",
+        unsafe_allow_html=True)
+    
 with col2:
     st.markdown(
         "<p style='font-size:18px; margin-top:20px; text-align: center;'>Office Use Only</p>"
