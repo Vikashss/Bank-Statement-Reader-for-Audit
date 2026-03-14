@@ -367,24 +367,22 @@ st.markdown(
 
 
 # ---------- Header ----------
-col1, col2, col3 = st.columns([1.2, 5, 1.2])
-
-with col1:
-    st.markdown(
-        """
-        <div class="app-header">
-            <div class="app-title">📄 Bank Statement Reader</div>
-            <div class="app-subtitle">Office Use Only</div>
-            <div class="app-subtitle">Supported format: Jammu & Kashmir Bank statement PDF only.</div>
-            
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-with col2:
-    st.empty()
-with col3:
-    st.empty()
+st.markdown(
+    """
+    <div style="text-align:center; padding-top:10px; padding-bottom:10px;">
+        <h1 style="margin-bottom:5px; font-size:40px;">
+            📄 Bank Statement Reader
+        </h1>
+        <p style="font-size:18px; margin-bottom:2px; color:#444;">
+            Office Use Only
+        </p>
+        <p style="font-size:16px; color:#666;">
+            Supported Format: Jammu & Kashmir Bank Statement PDF Only
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # st.caption("Supported format: Jammu & Kashmir Bank statement PDF only.")
 
