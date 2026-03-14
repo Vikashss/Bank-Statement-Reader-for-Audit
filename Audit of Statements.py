@@ -6,7 +6,8 @@ import pdfplumber
 import streamlit as st
 
 st.set_page_config(page_title="Bank Statement Parser", page_icon="📄", layout="wide")
-
+#--------------------Image Path----------------------------
+AG_IMAGE_PATH = "A.G(Audit).jpg"
 DATE_START_RE = re.compile(r'^\s*(\d{2}-\d{2}-\d{4})\b')
 DATE_ANY_RE = re.compile(r'(\d{2}-\d{2}-\d{4})')
 BAL_RE = re.compile(r'(\d+(?:,\d{3})*\.\d{2}(?:Cr|Dr))')
@@ -336,6 +337,8 @@ def to_excel_bytes(df):
 st.title("📄 Bank Statement Parser")
 st.caption("Upload statement PDF, review parsed rows, and download Excel.")
 with st.sidebar:
+    if Path(AG_IMAGE_PATH).exists():
+        st.image(AG_IMAGE_PATH, width=120)
     st.header("About")
     st.write("This app uses your final parsing logic, including balance-difference validation and hardcoded corrections.")
     st.markdown("**Steps**")
