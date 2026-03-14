@@ -1,6 +1,7 @@
-pytesseract
-pillow
-pdfplumber
-pandas
 streamlit
+pandas
+pdfplumber
 openpyxl
+pillow
+pytesseract
+altair==4.2.2
