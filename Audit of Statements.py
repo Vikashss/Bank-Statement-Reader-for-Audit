@@ -335,7 +335,14 @@ def to_excel_bytes(df):
 
 st.title("📄 Bank Statement Parser")
 st.caption("Upload statement PDF, review parsed rows, and download Excel.")
-
+with st.sidebar:
+    st.header("About")
+    st.write("This app uses your final parsing logic, including balance-difference validation and hardcoded corrections.")
+    st.markdown("**Steps**")
+    st.write("1. Upload PDF")
+    st.write("2. Enter Opening Balance manually and press enter")
+    st.write("3. Review totals and corrected rows")
+    st.write("4. Download Excel")
 uploaded_file = st.file_uploader("Upload statement PDF", type=["pdf"])
 
 opening_balance_input = st.text_input(
