@@ -1,6 +1,5 @@
 import re
 from io import BytesIO
-
 import pandas as pd
 import pdfplumber
 import streamlit as st
@@ -337,8 +336,8 @@ def to_excel_bytes(df):
 st.title("📄 Bank Statement Parser")
 st.caption("Upload statement PDF, review parsed rows, and download Excel.")
 with st.sidebar:
-    if Path(AG_IMAGE_PATH).exists():
-        st.image(AG_IMAGE_PATH, width=120)
+    
+    st.image(AG_IMAGE_PATH, width=120)
     st.header("About")
     st.write("This app uses your final parsing logic, including balance-difference validation and hardcoded corrections.")
     st.markdown("**Steps**")
