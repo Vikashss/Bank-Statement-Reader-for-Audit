@@ -21,6 +21,7 @@ st.set_page_config(page_title="Bank Statement Reader", page_icon="📄", layout=
 # -------------------- Constants --------------------
 AG_IMAGE_PATH = "A.G(Audit).jpg"
 USAGE_LOG_FILE = "app_usage_log.xlsx"
+ADMIN_PASSWORD = "Audit@123"   # change this password
 
 DATE_START_RE = re.compile(r'^\s*(\d{2}-\d{2}-\d{4})\b')
 DATE_ANY_RE = re.compile(r'(\d{2}-\d{2}-\d{4})')
@@ -110,11 +111,13 @@ DISPLAY_COLUMNS = [
 def clean(text):
     return " ".join(str(text).split()) if text is not None else ""
 
+
 def should_skip(line):
     line = clean(line)
     if not line:
         return True
     return any(x in line for x in SKIP_TEXT)
+
 
 def balance_to_float(balance_text):
     balance_text = clean(balance_text)
@@ -129,6 +132,7 @@ def balance_to_float(balance_text):
     except Exception:
         return None
 
+
 def amount_to_float(amount_text):
     amount_text = clean(amount_text).replace(",", "")
     try:
@@ -136,10 +140,12 @@ def amount_to_float(amount_text):
     except Exception:
         return None
 
+
 def fmt_amount(x):
     if x is None:
         return "0"
     return f"{float(x):.2f}"
+
 
 def split_description_and_ref(text):
     text = clean(text)
@@ -156,6 +162,7 @@ def split_description_and_ref(text):
 
     return text, ""
 
+
 def cut_footer_text(block):
     block = clean(block)
     for word in STOP_WORDS:
@@ -163,6 +170,7 @@ def cut_footer_text(block):
         if pos != -1:
             block = block[:pos].strip()
     return block
+
 
 def score_page_text(text):
     if not text:
@@ -180,6 +188,7 @@ def preprocess_ocr_image(pil_img):
     img = img.filter(ImageFilter.SHARPEN)
     return img
 
+
 def ocr_extract_page_text(page):
     if not OCR_AVAILABLE:
         return ""
@@ -190,6 +199,7 @@ def ocr_extract_page_text(page):
         return text or ""
     except Exception:
         return ""
+
 
 def get_best_page_text(page):
     extracted_text = page.extract_text() or ""
@@ -248,6 +258,7 @@ def parse_transaction_block(block):
         "closing_balance": closing_balance,
     }
 
+
 def build_transaction_blocks(file_obj):
     blocks = []
     current_block = ""
@@ -284,6 +295,7 @@ def build_transaction_blocks(file_obj):
         blocks.append(current_block.strip())
 
     return blocks, ocr_used_pages
+
 
 def process_pdf(file_obj, opening_balance=None):
     blocks, ocr_used_pages = build_transaction_blocks(file_obj)
@@ -407,13 +419,13 @@ def detect_high_risk(df):
     return high_risk_debit, high_risk_credit
 
 # -------------------- Excel Export --------------------
-def to_excel_bytes(df):
+def to_excel_bytes(df, sheet_name="Statement"):
     output = BytesIO()
     export_df = df.drop(columns=["Debit_num", "Credit_num"], errors="ignore")
 
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        export_df.to_excel(writer, index=False, sheet_name="Statement")
-        ws = writer.sheets["Statement"]
+        export_df.to_excel(writer, index=False, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
 
         for idx, column_name in enumerate(export_df.columns, start=1):
             max_len = max(
@@ -505,6 +517,13 @@ st.markdown(
         font-size:16px;
         color:#666;
     }
+    .access-box {
+        background:#f8fafc;
+        border:1px solid #e2e8f0;
+        border-radius:10px;
+        padding:14px;
+        margin-bottom:12px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -546,17 +565,45 @@ with st.sidebar:
     st.write("4. Review parsed data, corrected rows and failed blocks")
     st.write("5. Download Excel outputs")
 
-    st.divider()
-    st.subheader("User Access Details")
-    user_name = st.text_input("Your Name *")
-    user_email = st.text_input("Official Email ID *")
-    user_section = st.text_input("Section / Field Party No. *")
-    st.caption("User access details are recorded for internal monitoring.")
-
     if not OCR_AVAILABLE:
         st.warning("OCR fallback is not available in this environment.")
 
-# -------------------- Mandatory Access Check --------------------
+    st.divider()
+    st.subheader("Admin Access")
+    admin_password = st.text_input("Admin Password", type="password")
+
+    if admin_password == ADMIN_PASSWORD:
+        st.success("Admin access granted")
+        if os.path.exists(USAGE_LOG_FILE):
+            with open(USAGE_LOG_FILE, "rb") as f:
+                st.download_button(
+                    label="Download Usage Log",
+                    data=f,
+                    file_name="app_usage_log.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+    elif admin_password:
+        st.error("Invalid admin password")
+
+# -------------------- User Access Details on Main Page --------------------
+st.markdown('<div class="access-box">', unsafe_allow_html=True)
+st.markdown("### User Access Details")
+
+u1, u2, u3 = st.columns(3)
+
+with u1:
+    user_name = st.text_input("Your Name *", placeholder="Enter your full name")
+
+with u2:
+    user_email = st.text_input("Official Email ID *", placeholder="Enter official email")
+
+with u3:
+    user_section = st.text_input("Section / Field Party No. *", placeholder="Enter section or field party no.")
+
+st.caption("These details are mandatory and recorded for internal monitoring and audit support.")
+st.markdown('</div>', unsafe_allow_html=True)
+
 if not (user_name.strip() and user_email.strip() and user_section.strip()):
     st.warning("Please fill Name, Email ID and Section / Field Party No. to use this app.")
     st.stop()
@@ -645,7 +692,7 @@ else:
                     for idx, block in enumerate(failed_blocks, start=1):
                         st.text_area(f"Failed Block {idx}", block, height=120)
 
-            excel_data = to_excel_bytes(df)
+            excel_data = to_excel_bytes(df, sheet_name="Statement")
             st.download_button(
                 label="Download Full Excel",
                 data=excel_data,
@@ -674,7 +721,7 @@ else:
                 st.markdown("### High Risk Debit Entries")
                 if not high_debit.empty:
                     st.dataframe(high_debit[DISPLAY_COLUMNS], use_container_width=True, height=380)
-                    excel_high_debit = to_excel_bytes(high_debit)
+                    excel_high_debit = to_excel_bytes(high_debit, sheet_name="High Risk Debit")
                     st.download_button(
                         "Download High Risk Debit Excel",
                         data=excel_high_debit,
@@ -689,7 +736,7 @@ else:
                 st.markdown("### High Risk Credit Entries")
                 if not high_credit.empty:
                     st.dataframe(high_credit[DISPLAY_COLUMNS], use_container_width=True, height=380)
-                    excel_high_credit = to_excel_bytes(high_credit)
+                    excel_high_credit = to_excel_bytes(high_credit, sheet_name="High Risk Credit")
                     st.download_button(
                         "Download High Risk Credit Excel",
                         data=excel_high_credit,
@@ -702,16 +749,6 @@ else:
 
     except Exception as e:
         st.error(f"Error while processing PDF: {e}")
-
-# -------------------- Usage Log Download --------------------
-if os.path.exists(USAGE_LOG_FILE):
-    with open(USAGE_LOG_FILE, "rb") as f:
-        st.sidebar.download_button(
-            label="Download Usage Log",
-            data=f,
-            file_name="app_usage_log.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
 
 # -------------------- Footer --------------------
 st.markdown(
