@@ -3,7 +3,7 @@ from io import BytesIO
 import pandas as pd
 import pdfplumber
 import streamlit as st
-
+import base64
 st.set_page_config(page_title="Bank Statement Parser", page_icon="📄", layout="wide")
 #--------------------Image Path----------------------------
 AG_IMAGE_PATH = "A.G(Audit).jpg"
@@ -390,7 +390,15 @@ st.markdown(
 # st.caption("Upload statement PDF, review parsed rows, and download Excel.")
 with st.sidebar:
     
-    st.image(AG_IMAGE_PATH, width=200)
+    st.markdown(
+        f"""
+        <div style="text-align: center;">
+            <img src="data:image/jpg;base64,{base64.b64encode(open(AG_IMAGE_PATH, "rb").read()).decode()}" width="180">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     st.header("About")
     st.write("This app uses your final parsing logic, including balance-difference validation and hardcoded corrections.")
     st.markdown("**Steps**")
