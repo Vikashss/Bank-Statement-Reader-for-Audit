@@ -358,9 +358,8 @@ with col1:
         unsafe_allow_html=True
     )
     st.markdown(
-        "<p style='font-size:18px; margin-top:-10px;'>Office Use Only</p>",
-        unsafe_allow_html=True
-        "<p style='margin-top:26px;'>Supported format: Jammu & Kashmir Bank statement PDF only.</p>",
+        "<p style='font-size:18px; margin-top:-10px;'>Office Use Only</p>"
+        "<p style='font-size:18px; margin-top:-30px;'>Supported format: Jammu & Kashmir Bank statement PDF only.</p>",
         unsafe_allow_html=True
     )
 
