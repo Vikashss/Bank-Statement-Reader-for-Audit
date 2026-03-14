@@ -360,11 +360,12 @@ with col1:
     st.markdown(
         "<p style='font-size:18px; margin-top:-10px;'>Office Use Only</p>",
         unsafe_allow_html=True
+        "<p style='margin-top:26px;'>Supported format: Jammu & Kashmir Bank statement PDF only.</p>",
+        unsafe_allow_html=True
     )
-with col2:
-st.markdown(
-st.caption("Supported format: Jammu & Kashmir Bank statement PDF only.")
-)
+
+# st.caption("Supported format: Jammu & Kashmir Bank statement PDF only.")
+
 # st.title("📄 Bank Statement Parser")
 # st.caption("Upload statement PDF, review parsed rows, and download Excel.")
 with st.sidebar:
