@@ -7,7 +7,6 @@ import streamlit as st
 
 st.set_page_config(page_title="Bank Statement Parser", page_icon="📄", layout="wide")
 
-# ---------- Patterns ----------
 DATE_START_RE = re.compile(r'^\s*(\d{2}-\d{2}-\d{4})\b')
 DATE_ANY_RE = re.compile(r'(\d{2}-\d{2}-\d{4})')
 BAL_RE = re.compile(r'(\d+(?:,\d{3})*\.\d{2}(?:Cr|Dr))')
@@ -82,7 +81,6 @@ DISPLAY_COLUMNS = [
 ]
 
 
-# ---------- Helpers ----------
 def clean(text):
     return " ".join(str(text).split()) if text is not None else ""
 
@@ -236,11 +234,9 @@ def process_pdf(file_obj, opening_balance=None):
             failed_blocks.append(block)
 
     final_rows = []
-
-    # Use manual opening balance as previous balance
     prev_balance = opening_balance
 
-    for idx, row in enumerate(parsed_rows):
+    for row in parsed_rows:
         date = row["date"]
         description = row["description"]
         ref_code = row["ref_code"]
@@ -258,33 +254,11 @@ def process_pdf(file_obj, opening_balance=None):
 
         text_check = (description + " " + ref_code).upper()
 
-        if date == "02-04-2024" and "LOA 29/2024" in text_check:
-            final_amount = 129559.00
-            debit = fmt_amount(final_amount)
-            credit = "0"
-            closing_balance = "90947035.00Cr"
-            correction_flag = "Yes"
-            correction_note = "Hardcoded correction for known row"
-
-        elif (
-            date == "31-12-2025"
-            and "PFMS-IFT-EPA-C1225" in text_check
-            and "PM SHRI P" in text_check
-        ):
-            final_amount = 17627.00
-            debit = "0"
-            credit = fmt_amount(final_amount)
-            closing_balance = "76742640.00Cr"
-            correction_flag = "Yes"
-            correction_note = "Hardcoded correction for known row"
-
-        elif prev_balance is None or curr_balance is None:
-            # No opening balance provided and no previous balance available
+        if prev_balance is None or curr_balance is None:
             final_amount = parsed_amt_float
             debit = fmt_amount(final_amount) if final_amount is not None else "0"
             credit = "0"
             correction_note = "Opening balance / previous balance unavailable"
-
         else:
             delta = round(curr_balance - prev_balance, 2)
             abs_delta = round(abs(delta), 2)
@@ -352,29 +326,15 @@ def to_excel_bytes(df):
                 len(str(column_name)),
                 *(len(str(v)) for v in export_df[column_name].fillna(""))
             )
-            ws.column_dimensions[ws.cell(row=1, column=idx).column_letter].width = min(max(max_len + 2, 12), 50)
+            col_letter = ws.cell(row=1, column=idx).column_letter
+            ws.column_dimensions[col_letter].width = min(max(max_len + 2, 12), 50)
 
     output.seek(0)
     return output
 
 
-# ---------- UI ----------
 st.title("📄 Bank Statement Parser")
 st.caption("Upload statement PDF, review parsed rows, and download Excel.")
-
-with st.sidebar:
-    st.header("About")
-    st.write("This app uses your final parsing logic, including balance-difference validation and hardcoded corrections.")
-    st.markdown("**Steps**")
-    st.write("1. Upload PDF")
-    st.write("2. Enter opening balance manually")
-    st.write("3. Review totals and corrected rows")
-    st.write("4. Download Excel")
-    st.markdown("**Install locally**")
-    st.code(
-        "python -m pip install streamlit pdfplumber pandas openpyxl\npython -m streamlit run bank_statement_streamlit_app.py",
-        language="bash",
-    )
 
 uploaded_file = st.file_uploader("Upload statement PDF", type=["pdf"])
 
@@ -384,6 +344,10 @@ opening_balance_input = st.text_input(
 )
 
 opening_balance = balance_to_float(opening_balance_input) if opening_balance_input.strip() else None
+
+if opening_balance_input.strip() and opening_balance is None:
+    st.error("Invalid opening balance format. Use format like 90817476.00Cr or 1250.00Dr")
+    st.stop()
 
 if uploaded_file is None:
     st.info("Upload a PDF to start.")
@@ -424,7 +388,10 @@ else:
                 if not failed_blocks:
                     st.success("No failed blocks.")
                 else:
-                    st.warning(f"Parsed {total_rows} rows from {total_blocks} detected blocks. {failed_count} block(s) could not be parsed.")
+                    st.warning(
+                        f"Parsed {total_rows} rows from {total_blocks} detected blocks. "
+                        f"{failed_count} block(s) could not be parsed."
+                    )
                     for idx, block in enumerate(failed_blocks, start=1):
                         st.text_area(f"Failed Block {idx}", block, height=120)
 
