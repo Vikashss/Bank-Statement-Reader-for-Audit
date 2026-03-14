@@ -337,7 +337,7 @@ st.title("📄 Bank Statement Parser")
 st.caption("Upload statement PDF, review parsed rows, and download Excel.")
 with st.sidebar:
     
-    st.image(AG_IMAGE_PATH, width=120)
+    st.image(AG_IMAGE_PATH, width=200)
     st.header("About")
     st.write("This app uses your final parsing logic, including balance-difference validation and hardcoded corrections.")
     st.markdown("**Steps**")
