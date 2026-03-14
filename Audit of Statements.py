@@ -367,7 +367,7 @@ st.markdown(
 
 
 # ---------- Header ----------
-col1 = st.columns([1.2, 5, 1.2])
+col1, col2, col3 = st.columns([1.2, 5, 1.2])
 
 with col1:
     st.markdown(
@@ -381,7 +381,10 @@ with col1:
         """,
         unsafe_allow_html=True,
     )
-
+with col2:
+    st.empty()
+with col3:
+    st.empty()
 
 # st.caption("Supported format: Jammu & Kashmir Bank statement PDF only.")
 
