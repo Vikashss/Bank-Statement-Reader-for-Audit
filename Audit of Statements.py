@@ -353,7 +353,7 @@ st.markdown(
 col1, col2 = st.columns([1, 5])
 
 with col1:
-    st.title("<h1 style='margin-top:10px; text-align: center;'>📄 Bank Statement Parser</h1>")
+    st.title("📄 Bank Statement Parser")
     
 with col2:
     st.markdown(
