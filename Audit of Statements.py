@@ -332,9 +332,41 @@ def to_excel_bytes(df):
     output.seek(0)
     return output
 
+st.markdown(
+    """
+    <style>
+    .creator-footer {
+        text-align: center;
+        font-size: 15px;
+        margin-top: 40px;
+        padding-top: 15px;
+        border-top: 1px solid #d9d9d9;
+        color: #333333;
+        font-weight: 500;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
-st.title("📄 Bank Statement Parser")
-st.caption("Upload statement PDF, review parsed rows, and download Excel.")
+# ---------- Header ----------
+col1, col2 = st.columns([1, 5])
+
+with col1:
+    st.markdown(
+        "<h1 style='margin-top:10px;'>📄 Bank Statement Parser</h1>",
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        "<p style='font-size:18px; margin-top:-10px;'>Office Use Only</p>",
+        unsafe_allow_html=True
+    )
+with col2:
+st.markdown(
+st.caption("Supported format: Jammu & Kashmir Bank statement PDF only.")
+)
+# st.title("📄 Bank Statement Parser")
+# st.caption("Upload statement PDF, review parsed rows, and download Excel.")
 with st.sidebar:
     
     st.image(AG_IMAGE_PATH, width=200)
@@ -415,3 +447,12 @@ else:
 
     except Exception as e:
         st.error(f"Error while processing PDF: {e}")
+#---------footer--------------------------------------
+st.markdown(
+    """
+    <div class="creator-footer">
+        This App is created by <b>Sh. Vikash Sangwan, Auditor, Report Section</b>.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
