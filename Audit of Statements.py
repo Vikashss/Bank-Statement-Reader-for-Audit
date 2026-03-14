@@ -357,6 +357,7 @@ with col1:
         "<h1 style='margin-top:10px;'>📄 Bank Statement Parser</h1>",
         unsafe_allow_html=True
     )
+with col2:
     st.markdown(
         "<p style='font-size:18px; margin-top:-10px;'>Office Use Only</p>"
         "<p style='font-size:18px; margin-top:-30px;'>Supported format: Jammu & Kashmir Bank statement PDF only.</p>",
