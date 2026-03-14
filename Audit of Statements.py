@@ -1,24 +1,26 @@
 import re
+import os
 import base64
 from io import BytesIO
+from datetime import datetime
 
 import pandas as pd
 import pdfplumber
 import streamlit as st
 
-# OCR imports
+# OCR imports (optional fallback)
 try:
     import pytesseract
-    from PIL import Image, ImageOps, ImageFilter
+    from PIL import ImageOps, ImageFilter
     OCR_AVAILABLE = True
 except Exception:
     OCR_AVAILABLE = False
 
+st.set_page_config(page_title="Bank Statement Reader", page_icon="📄", layout="wide")
 
-st.set_page_config(page_title="Bank Statement Parser", page_icon="📄", layout="wide")
-
-# -------------------- Image Path ----------------------------
+# -------------------- Constants --------------------
 AG_IMAGE_PATH = "A.G(Audit).jpg"
+USAGE_LOG_FILE = "app_usage_log.xlsx"
 
 DATE_START_RE = re.compile(r'^\s*(\d{2}-\d{2}-\d{4})\b')
 DATE_ANY_RE = re.compile(r'(\d{2}-\d{2}-\d{4})')
@@ -104,19 +106,15 @@ DISPLAY_COLUMNS = [
     "Correction Note",
 ]
 
-
-# -------------------- Utility Functions ----------------------------
-
+# -------------------- Utility Functions --------------------
 def clean(text):
     return " ".join(str(text).split()) if text is not None else ""
-
 
 def should_skip(line):
     line = clean(line)
     if not line:
         return True
     return any(x in line for x in SKIP_TEXT)
-
 
 def balance_to_float(balance_text):
     balance_text = clean(balance_text)
@@ -131,7 +129,6 @@ def balance_to_float(balance_text):
     except Exception:
         return None
 
-
 def amount_to_float(amount_text):
     amount_text = clean(amount_text).replace(",", "")
     try:
@@ -139,12 +136,10 @@ def amount_to_float(amount_text):
     except Exception:
         return None
 
-
 def fmt_amount(x):
     if x is None:
         return "0"
     return f"{float(x):.2f}"
-
 
 def split_description_and_ref(text):
     text = clean(text)
@@ -161,7 +156,6 @@ def split_description_and_ref(text):
 
     return text, ""
 
-
 def cut_footer_text(block):
     block = clean(block)
     for word in STOP_WORDS:
@@ -170,61 +164,37 @@ def cut_footer_text(block):
             block = block[:pos].strip()
     return block
 
-
 def score_page_text(text):
-    """
-    Score extracted page text. Higher score means better structured text for parsing.
-    """
     if not text:
         return 0
-
     lines = [clean(x) for x in text.split("\n") if clean(x)]
     date_starts = sum(1 for x in lines if DATE_START_RE.match(x))
     balances = len(BAL_RE.findall(text))
     dates_any = len(DATE_ANY_RE.findall(text))
-
     return (date_starts * 10) + (balances * 4) + dates_any + len(lines) * 0.05
 
-
-# -------------------- OCR Functions ----------------------------
-
+# -------------------- OCR Functions --------------------
 def preprocess_ocr_image(pil_img):
-    """
-    Light OCR preprocessing.
-    """
     img = pil_img.convert("L")
     img = ImageOps.autocontrast(img)
     img = img.filter(ImageFilter.SHARPEN)
     return img
 
-
 def ocr_extract_page_text(page):
-    """
-    OCR fallback for a single pdf page.
-    """
     if not OCR_AVAILABLE:
         return ""
-
     try:
         page_img = page.to_image(resolution=300).original
         page_img = preprocess_ocr_image(page_img)
-
-        # PSM 6 = assume a uniform block of text
         text = pytesseract.image_to_string(page_img, config="--psm 6")
         return text or ""
     except Exception:
         return ""
 
-
 def get_best_page_text(page):
-    """
-    Use normal extraction first. If weak, use OCR and keep whichever scores better.
-    Returns: text, used_ocr(bool)
-    """
     extracted_text = page.extract_text() or ""
     extracted_score = score_page_text(extracted_text)
 
-    # If standard extraction is already good enough, keep it
     if extracted_score >= 12:
         return extracted_text, False
 
@@ -236,9 +206,7 @@ def get_best_page_text(page):
 
     return extracted_text, False
 
-
-# -------------------- Parsing Functions ----------------------------
-
+# -------------------- Parser Functions --------------------
 def parse_transaction_block(block):
     block = cut_footer_text(block)
     if not block:
@@ -280,7 +248,6 @@ def parse_transaction_block(block):
         "closing_balance": closing_balance,
     }
 
-
 def build_transaction_blocks(file_obj):
     blocks = []
     current_block = ""
@@ -317,7 +284,6 @@ def build_transaction_blocks(file_obj):
         blocks.append(current_block.strip())
 
     return blocks, ocr_used_pages
-
 
 def process_pdf(file_obj, opening_balance=None):
     blocks, ocr_used_pages = build_transaction_blocks(file_obj)
@@ -409,24 +375,19 @@ def process_pdf(file_obj, opening_balance=None):
         df["Debit_num"] = pd.to_numeric(df["Debit"], errors="coerce").fillna(0.0)
         df["Credit_num"] = pd.to_numeric(df["Credit"], errors="coerce").fillna(0.0)
     else:
-        df["Debit_num"] = []
-        df["Credit_num"] = []
+        df["Debit_num"] = pd.Series(dtype=float)
+        df["Credit_num"] = pd.Series(dtype=float)
 
     return df, failed_blocks, len(blocks), ocr_used_pages
 
-
-# -------------------- High Risk Detection ----------------------------
-
+# -------------------- High Risk Detection --------------------
 def detect_high_risk(df):
     if df.empty:
         return df.copy(), df.copy()
 
     keyword_pattern = "|".join(HIGH_RISK_KEYWORDS)
     name_pattern = "|".join(PERSON_NAME_WORDS)
-
-    # likely human name: 2 capitalized words
     human_name_regex = r'\b[A-Z]{3,}\s[A-Z]{3,}\b'
-
     exclude_regex = r'\b(BANK|JAMMU|KASHMIR|GOVT|GOVERNMENT|TREASURY|SECRETARIAT|ACCOUNT|SALARY|INTEREST|CHARGE|GST|TAX)\b'
 
     desc_upper = df["Description"].str.upper()
@@ -445,9 +406,7 @@ def detect_high_risk(df):
 
     return high_risk_debit, high_risk_credit
 
-
-# -------------------- Excel Export ----------------------------
-
+# -------------------- Excel Export --------------------
 def to_excel_bytes(df):
     output = BytesIO()
     export_df = df.drop(columns=["Debit_num", "Credit_num"], errors="ignore")
@@ -467,9 +426,53 @@ def to_excel_bytes(df):
     output.seek(0)
     return output
 
+# -------------------- Usage Log --------------------
+def log_user_usage_to_excel(
+    name,
+    email,
+    section_field_party,
+    file_name,
+    total_rows,
+    corrected_rows,
+    failed_blocks,
+    ocr_used_pages
+):
+    log_row = {
+        "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Name": name,
+        "Email": email,
+        "Section / Field Party No.": section_field_party,
+        "Uploaded File": file_name,
+        "Total Rows": total_rows,
+        "Corrected Rows": corrected_rows,
+        "Failed Blocks": failed_blocks,
+        "OCR Pages Used": ocr_used_pages,
+    }
 
-# -------------------- Style ----------------------------
+    new_df = pd.DataFrame([log_row])
 
+    if os.path.exists(USAGE_LOG_FILE):
+        try:
+            existing_df = pd.read_excel(USAGE_LOG_FILE)
+            updated_df = pd.concat([existing_df, new_df], ignore_index=True)
+        except Exception:
+            updated_df = new_df
+    else:
+        updated_df = new_df
+
+    with pd.ExcelWriter(USAGE_LOG_FILE, engine="openpyxl") as writer:
+        updated_df.to_excel(writer, index=False, sheet_name="Usage Log")
+        ws = writer.sheets["Usage Log"]
+
+        for idx, column_name in enumerate(updated_df.columns, start=1):
+            max_len = max(
+                len(str(column_name)),
+                *(len(str(v)) for v in updated_df[column_name].fillna(""))
+            )
+            col_letter = ws.cell(row=1, column=idx).column_letter
+            ws.column_dimensions[col_letter].width = min(max(max_len + 2, 15), 40)
+
+# -------------------- Styles --------------------
 st.markdown(
     """
     <style>
@@ -507,8 +510,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# -------------------- Header ----------------------------
-
+# -------------------- Header --------------------
 st.markdown(
     """
     <div class="audit-head">
@@ -520,8 +522,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# -------------------- Sidebar ----------------------------
-
+# -------------------- Sidebar --------------------
 with st.sidebar:
     try:
         st.markdown(
@@ -539,16 +540,28 @@ with st.sidebar:
     st.write("Internal utility for bank statement review and audit analysis.")
 
     st.markdown("**Steps**")
-    st.write("1. Upload PDF")
-    st.write("2. Enter Opening Balance")
-    st.write("3. Review parsed data, corrected rows and failed blocks")
-    st.write("4. Download Excel outputs")
+    st.write("1. Fill user access details")
+    st.write("2. Upload PDF")
+    st.write("3. Enter Opening Balance")
+    st.write("4. Review parsed data, corrected rows and failed blocks")
+    st.write("5. Download Excel outputs")
+
+    st.divider()
+    st.subheader("User Access Details")
+    user_name = st.text_input("Your Name *")
+    user_email = st.text_input("Official Email ID *")
+    user_section = st.text_input("Section / Field Party No. *")
+    st.caption("User access details are recorded for internal monitoring.")
 
     if not OCR_AVAILABLE:
-        st.warning("OCR library not available. Install pytesseract and Tesseract OCR for fallback parsing.")
+        st.warning("OCR fallback is not available in this environment.")
 
-# -------------------- Inputs ----------------------------
+# -------------------- Mandatory Access Check --------------------
+if not (user_name.strip() and user_email.strip() and user_section.strip()):
+    st.warning("Please fill Name, Email ID and Section / Field Party No. to use this app.")
+    st.stop()
 
+# -------------------- Inputs --------------------
 uploaded_file = st.file_uploader("Upload statement PDF", type=["pdf"])
 
 opening_balance_input = st.text_input(
@@ -562,8 +575,7 @@ if opening_balance_input.strip() and opening_balance is None:
     st.error("Invalid opening balance format. Use format like 90817476.00Cr or 1250.00Dr")
     st.stop()
 
-# -------------------- Main ----------------------------
-
+# -------------------- Main --------------------
 if uploaded_file is None:
     st.info("Upload a PDF to start.")
 else:
@@ -583,6 +595,23 @@ else:
             total_credit = float(df["Credit_num"].sum())
             corrected_rows = int((df["Correction Flag"] == "Yes").sum())
             failed_count = len(failed_blocks)
+
+            log_key = f"{user_email}_{uploaded_file.name}"
+            if "last_logged_key" not in st.session_state:
+                st.session_state["last_logged_key"] = ""
+
+            if st.session_state["last_logged_key"] != log_key:
+                log_user_usage_to_excel(
+                    name=user_name,
+                    email=user_email,
+                    section_field_party=user_section,
+                    file_name=uploaded_file.name,
+                    total_rows=total_rows,
+                    corrected_rows=corrected_rows,
+                    failed_blocks=failed_count,
+                    ocr_used_pages=ocr_used_pages
+                )
+                st.session_state["last_logged_key"] = log_key
 
             st.subheader("Statement Overview")
             m1, m2, m3, m4, m5, m6 = st.columns(6)
@@ -630,7 +659,6 @@ else:
 
             d_rows = len(high_debit)
             d_total = float(high_debit["Debit_num"].sum()) if not high_debit.empty else 0.0
-
             c_rows = len(high_credit)
             c_total = float(high_credit["Credit_num"].sum()) if not high_credit.empty else 0.0
 
@@ -675,7 +703,17 @@ else:
     except Exception as e:
         st.error(f"Error while processing PDF: {e}")
 
-# -------------------- Footer ----------------------------
+# -------------------- Usage Log Download --------------------
+if os.path.exists(USAGE_LOG_FILE):
+    with open(USAGE_LOG_FILE, "rb") as f:
+        st.sidebar.download_button(
+            label="Download Usage Log",
+            data=f,
+            file_name="app_usage_log.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+# -------------------- Footer --------------------
 st.markdown(
     """
     <div class="creator-footer">
