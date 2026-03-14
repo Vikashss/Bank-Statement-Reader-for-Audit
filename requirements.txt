@@ -1,7 +1,9 @@
 streamlit
 pandas
-pdfplumber
 openpyxl
+pdfplumber
 pillow
 pytesseract
-altair==4.2.2
+transformers
+torch
+sentencepiece
