@@ -331,10 +331,26 @@ def to_excel_bytes(df):
 
     output.seek(0)
     return output
-
 st.markdown(
     """
     <style>
+    .app-header {
+        padding: 8px 0 2px 0;
+    }
+    .app-title {
+        font-size: 2.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 0;
+        text-align: center;
+    }
+    .app-subtitle {
+        text-align: center;
+        color: #475569;
+        font-size: 1rem;
+        margin-top: 0.2rem;
+        margin-bottom: 0;
+    }
     .creator-footer {
         text-align: center;
         font-size: 15px;
@@ -346,21 +362,26 @@ st.markdown(
     }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
+
 # ---------- Header ----------
-col1, col2 = st.columns([1, 5])
+col1 = st.columns([1.2, 5, 1.2])
 
 with col1:
-    st.title("📄 Bank Statement Parser")
-    
-with col2:
     st.markdown(
-        "<p style='font-size:18px; margin-top:20px; text-align: center;'>Office Use Only</p>"
-        "<p style='font-size:18px; margin-top:30px; text-align: center;'>Supported format: Jammu & Kashmir Bank statement PDF only.</p>",
-        unsafe_allow_html=True
+        """
+        <div class="app-header">
+            <div class="app-title">📄 Bank Statement Reader</div>
+            <div class="app-subtitle">Office Use Only</div>
+            <div class="app-subtitle">Supported format: Jammu & Kashmir Bank statement PDF only.</div>
+            
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+
 
 # st.caption("Supported format: Jammu & Kashmir Bank statement PDF only.")
 
